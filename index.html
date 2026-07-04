@@ -280,6 +280,7 @@
    ===================================================================== */
 const CONFIG = {
   CHANNEL_HANDLE: "saimandirnoida",   // used only for the "visit channel" links below
+  STATUS_ENDPOINT: "https://sai-darshan-status.deepak-prasad.workers.dev/", // <-- replace with your Worker's actual URL
   MORNING_HOUR: 7,                    // 24h local time, approx aarti hour
   EVENING_HOUR: 19,
   WINDOW_MINUTES: 75,                 // poll aggressively within ± this many minutes of each aarti
@@ -341,7 +342,7 @@ function ringBells(){
 async function refresh(manual){
   ringBells();
   try{
-    const res = await fetch('/api/darshan-status', { cache: 'no-store' });
+    const res = await fetch(CONFIG.STATUS_ENDPOINT, { cache: 'no-store' });
     const data = await res.json();
     if(data.error) throw new Error(data.error);
 
