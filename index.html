@@ -280,7 +280,7 @@
    ===================================================================== */
 const CONFIG = {
   CHANNEL_HANDLE: "saimandirnoida",   // used only for the "visit channel" links below
-  STATUS_ENDPOINT: "https://sai-darshan-status.deepak-prasad.workers.dev/", // <-- replace with your Worker's actual URL
+  STATUS_ENDPOINT: "https://sai-darshan-status.YOUR-SUBDOMAIN.workers.dev", // <-- replace with your Worker's actual URL
   MORNING_HOUR: 7,                    // 24h local time, approx aarti hour
   EVENING_HOUR: 19,
   WINDOW_MINUTES: 75,                 // poll aggressively within ± this many minutes of each aarti
@@ -334,13 +334,57 @@ function setStatus(isLive, text){
   el.statusText.textContent = text;
 }
 
-function ringBells(){
+/* ---------- Synthesized bell chime (no audio file needed) ---------- */
+let audioCtx = null;
+
+function playBellTone(){
+  try{
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+
+    const now = audioCtx.currentTime;
+    // A small bell's timbre is roughly a fundamental plus a few inharmonic
+    // overtones, each decaying at a slightly different rate.
+    const partials = [
+      { freq: 880,  gain: 0.35, decay: 1.3 },
+      { freq: 1480, gain: 0.18, decay: 0.9 },
+      { freq: 2210, gain: 0.10, decay: 0.6 },
+      { freq: 3120, gain: 0.06, decay: 0.4 },
+    ];
+
+    const master = audioCtx.createGain();
+    master.gain.value = 0.5;
+    master.connect(audioCtx.destination);
+
+    partials.forEach(p => {
+      const osc = audioCtx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = p.freq;
+
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(p.gain, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + p.decay);
+
+      osc.connect(gain);
+      gain.connect(master);
+      osc.start(now);
+      osc.stop(now + p.decay + 0.1);
+    });
+  } catch(e){
+    // Autoplay/audio restrictions or an unsupported browser — fail silently,
+    // the visual bell animation still gives feedback either way.
+    console.warn('Bell tone unavailable:', e);
+  }
+}
+
+function ringBells(playSound){
   [el.bellL, el.bellR].forEach(b => b.classList.add('ring'));
   setTimeout(() => [el.bellL, el.bellR].forEach(b => b.classList.remove('ring')), 650);
+  if(playSound) playBellTone();
 }
 
 async function refresh(manual){
-  ringBells();
+  ringBells(manual);
   try{
     const res = await fetch(CONFIG.STATUS_ENDPOINT, { cache: 'no-store' });
     const data = await res.json();
