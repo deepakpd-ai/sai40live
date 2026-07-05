@@ -343,10 +343,22 @@ function showVideo(videoId){
       allowfullscreen></iframe>`;
 }
 
+function showRecentStreams(videoIds){
+  // Recent completed aarti broadcasts (from the channel's "Streams" tab),
+  // played back-to-back. The first video plays directly; the rest are queued
+  // via YouTube's `playlist` embed parameter, which chains extra video IDs
+  // after the primary one without needing an actual saved YouTube playlist.
+  const [first, ...rest] = videoIds;
+  const queueParam = rest.length ? `&playlist=${rest.join(',')}` : '';
+  el.shell.innerHTML = `<iframe
+      src="https://www.youtube.com/embed/${first}?autoplay=1&mute=1&rel=0${queueParam}"
+      title="Shri Sai Samiti recent Aarti recordings"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen></iframe>`;
+}
+
 function showPlaylist(playlistId){
-  // Recent uploads, played back-to-back in sequence. YouTube's auto-generated
-  // "uploads" playlist (id starts with UU) lists newest first, so this starts
-  // on the most recent darshan and rolls into earlier ones automatically.
+  // Fallback only — used if the channel has no completed streams indexed yet.
   el.shell.innerHTML = `<iframe
       src="https://www.youtube.com/embed/videoseries?list=${playlistId}&autoplay=1&mute=1&rel=0"
       title="Shri Sai Samiti recent darshan recordings"
@@ -425,6 +437,9 @@ async function refresh(manual){
     if(data.live && data.videoId){
       showVideo(data.videoId);
       setStatus(true, "Live now");
+    } else if(data.videoIds && data.videoIds.length){
+      showRecentStreams(data.videoIds);
+      setStatus(false, "Not live · playing recent Aarti recordings in sequence");
     } else if(data.playlistId){
       showPlaylist(data.playlistId);
       setStatus(false, "Not live · playing recent darshan in sequence");
